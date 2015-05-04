@@ -46,13 +46,31 @@
 			isbn=req.responseText;
 			document.getElementById("cover").src="http://"+ip+":5000/gbooks/"+isbn+"/copertina";
 		}
+		function getMobileOS() {
+		  var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+		  if( userAgent.match( /iPad/i ) || userAgent.match( /iPhone/i ) || userAgent.match( /iPod/i ) )
+		  {
+		    return 'iOS';
+
+		  }
+		  else if( userAgent.match( /Android/i ) )
+		  {
+
+		    return 'Android';
+		  }
+		  else
+		  {
+		    return 'unknown';
+		  }
+		}
 		function lista(){
 				var listareq = new XMLHttpRequest();
 				listareq.open('GET', 'http://'+ip+':5000/lista', false);
 				listareq.send(null);
 				var lista=listareq.responseText;
 				document.getElementById("listaBox").innerHTML=lista.replace(new RegExp('\r?\n','g'), '<br />');
-				if(navigator.userAgent.toLowerCase()=="android"||navigator.userAgent.toLowerCase()=="iphone"||navigator.userAgent.toLowerCase()=="ipad"||navigator.userAgent.toLowerCase()=="ipod"){
+				if(getMobileOS()!='unknown'){
 					document.getElementById("scan").href="pic2shop://scan?callback=http://"+ip+":5000/static/cookie.html?=EAN";
 					document.getElementById("Pscan").href="pic2shop://scan?callback=http://"+ip+":5000/static/cookie.html?=EAN";
 				}
@@ -151,7 +169,7 @@
 			document.getElementById("addBox").innerHTML=addApi.responseText.replace(new RegExp('\r?\n','g'), '<br />');
 		}
 		function readISBN(){
-			if(navigator.userAgent.toLowerCase()=="android"||navigator.userAgent.toLowerCase()=="iphone"||navigator.userAgent.toLowerCase()=="ipad"||navigator.userAgent.toLowerCase()=="ipod"){
+			if(getMobileOS()!='unknown'){
 				var isbn=document.cookie.replace("isbn=","");
 			}
 			else{
@@ -168,11 +186,11 @@
 			document.getElementById("isbn").value=isbn;
 		}
 		function PreadISBN(){
-			if(navigator.userAgent.toLowerCase()=="android"||navigator.userAgent.toLowerCase()=="iphone"||navigator.userAgent.toLowerCase()=="ipad"||navigator.userAgent.toLowerCase()=="ipod"){
+			if(getMobileOS()!='unknown'){
 				var Pisbn=document.cookie.replace("isbn=","");
 			}
 			else{
-				var éisbn=prompt("Inserisci l'ISBN", "ISBN");
+				var Pisbn=prompt("Inserisci l'ISBN", "ISBN");
 			}
 			document.getElementById("titoisbn").value=Pisbn;
 			document.getElementById("isbnotit").value=1;
@@ -221,6 +239,13 @@
 					Inoltre quest'app potrà essere eseguita se connessi alla stessa rete in cui risiede il server dei contenuti
 					<br>
 				</p>
+				<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+				<input type="hidden" name="cmd" value="_s-xclick">
+				<input type="hidden" name="hosted_button_id" value="VFZK6WR23YBQL">
+				<input type="image" src="https://www.paypalobjects.com/it_IT/IT/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - Il metodo rapido, affidabile e innovativo per pagare e farsi pagare.">
+				<img alt="" border="0" src="https://www.paypalobjects.com/it_IT/i/scr/pixel.gif" width="1" height="1">
+				</form>
+
 			</div>
 		</div>
 		<div data-role="tabbar" data-iconpos="top" data-theme="a">
