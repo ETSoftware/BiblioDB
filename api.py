@@ -60,8 +60,11 @@ ISBNborrowDate = {}
 nomeFile = "db_libri"
 borrowTime = 30
 utenti={"admin":"password"}
-badge={"admin":"01"}
+badge={"01":"admin"}
 tipoUtenti={"admin":"admin"}
+statoUtenti={}
+badgeUtenti={}
+rfidISBN={}
 try:
 	o = open('bibliodb.json', 'r')
 except IOError:
@@ -86,6 +89,30 @@ finally:
 			o)
 		o.close
 try:
+	o = open('tessere.json', 'r')
+except IOError:
+	o = open('tessere.json', 'w')
+	json.dump((statoUtenti,badgeUtenti),o)
+	o.close()
+else:
+	o.close
+finally:
+	with open('tessere.json', 'r') as o:
+		statoUtenti,badgeUtenti = json.load(o)
+		o.close
+try:
+	o = open('rfid.json', 'r')
+except IOError:
+	o = open('rfid.json', 'w')
+	json.dump((rfidISBN),o)
+	o.close()
+else:
+	o.close
+finally:
+	with open('rfid.json', 'r') as o:
+		rfidISBN = json.load(o)
+		o.close
+try:
 	o = open('bibliodb-utenti.json', 'r')
 except IOError:
 	o = open('bibliodb-utenti.json', 'w')
@@ -98,7 +125,6 @@ finally:
 		userstring=decode(o.read())
 		utenti,badge,tipoUtenti = json.loads(userstring)
 		o.close
-
 try:
 	o = open('ipWhitelist.json', 'r')
 except IOError:
@@ -130,6 +156,21 @@ def add(titolo,isbn,autore,pos):
 			 ISBNown,
 			 borrowTime,
 			 ISBNborrowDate),
+			o)
+		o.close()
+	except:
+		return"ERRORE"
+	else:
+		return "Aggiunto "+titolo.title()
+	pass
+def addUser(cod,badge):
+	try:
+		statoUtenti[cod] = "OK"
+		badgeUtenti[cod] = badge
+		o = open('tessere.json', 'w')
+		json.dump(
+			(statoUtenti,
+			 badgeUtenti),
 			o)
 		o.close()
 	except:
@@ -169,36 +210,44 @@ def prestaISBN(pISBN, state, owner):
 	strPrestito=""
 	#try:
 	oldOwner=ISBNown[pISBN.upper()]
-	ISBNuse[pISBN.upper()] = state
-	ISBNown[pISBN.upper()] = owner
-	data_prestito = datetime.today().strftime('%d/%m/%Y')
-	data_fine = datetime.today() + timedelta(days=borrowTime)
-	res = data_fine.strftime('%d/%m/%Y')
-	ISBNborrowDate[pISBN] = data_prestito
-	strPrestito=strPrestito+"Libro:\t" + ISBNTotit(pISBN).title() + "\nAutore: " + ISBNToAut(pISBN).title() + "\nISBN: \t" + pISBN + "\nPosizione:\t" + isbnPos[pISBN] + "\n" + 50 * '-' + '\n Stato:\n'
-	if state == 0:
-		strPrestito=strPrestito+"Prestato a: " + owner+'\n'
-		strPrestito=strPrestito+"RENDERE ENTRO:\n"
-		strPrestito=strPrestito+ res+'\n'
-	elif state == 1:
-		strPrestito=strPrestito+"Reso da: " + oldOwner+'\n'
-		ISBNown[pISBN] = "Biblioteca"
-		strPrestito=strPrestito+ "Prestato il: "+ISBNborrowDate[pISBN]+'\n'
-	o = open('bibliodb.json', 'w')
-	json.dump(
-		(ISBNuse,
-		 isbnPos,
-		 titleIsbn,
-		 isbnTitle,
-		 isbnAuthor,
-		 nomeFile,
-		 ISBNown,
-		 borrowTime,
-		 ISBNborrowDate),
-		o)
-	o.close()
-	#except KeyError:
-	#   print"ERRORE"
+	if oldOwner=="Biblioteca":
+		try:
+			checkEsiste=statoUtenti[owner]
+		except KeyError:
+			strPrestito="L'utente è inesistente"
+		else:
+			ISBNuse[pISBN.upper()] = state
+			ISBNown[pISBN.upper()] = owner
+			data_prestito = datetime.today().strftime('%d/%m/%Y')
+			data_fine = datetime.today() + timedelta(days=borrowTime)
+			res = data_fine.strftime('%d/%m/%Y')
+			ISBNborrowDate[pISBN] = data_prestito
+			strPrestito=strPrestito+"Libro:\t" + ISBNTotit(pISBN).title() + "\nAutore: " + ISBNToAut(pISBN).title() + "\nISBN: \t" + pISBN + "\nPosizione:\t" + isbnPos[pISBN] + "\n" + 50 * '-' + '\n Stato:\n'
+			if state == 0:
+				strPrestito=strPrestito+"Prestato a: " + owner+'\n'
+				strPrestito=strPrestito+"RENDERE ENTRO:\n"
+				strPrestito=strPrestito+ res+'\n'
+			elif state == 1:
+				strPrestito=strPrestito+"Reso da: " + oldOwner+'\n'
+				ISBNown[pISBN] = "Biblioteca"
+				strPrestito=strPrestito+ "Prestato il: "+ISBNborrowDate[pISBN]+'\n'
+			o = open('bibliodb.json', 'w')
+			json.dump(
+				(ISBNuse,
+				 isbnPos,
+				 titleIsbn,
+				 isbnTitle,
+				 isbnAuthor,
+				 nomeFile,
+				 ISBNown,
+				 borrowTime,
+				 ISBNborrowDate),
+				o)
+			o.close()
+			#except KeyError:
+			#   print"ERRORE"
+	else:
+		strPrestito="Il titolo è stato prestato in data "+ISBNborrowDate[pISBN]
 	return strPrestito
 def auth(user,password):
 	h = SHA512.new()
@@ -226,6 +275,36 @@ def tsvExport():
             export=export+" \t \t \t \n"
     return export
 app = Flask(__name__)
+@app.route('/users/add/<user>/<password>/<codTessera>/<badge>')
+def AggiungiUtente(user, password, codTessera,badge):
+	if auth(user,password)=="admin":
+		return addUser(codTessera,badge)
+	else:
+		return"Non Autorizzato!"
+@app.route('/rfid/auth/<rfid>')
+def checkBadge(rfid):
+	if ipEnabled==True:
+		try:
+			ipR= ip[request.environ['REMOTE_ADDR']]
+		except KeyError:
+			authStatus="2"
+		else:
+			try:
+				if tipoUtenti[badge[urllib2.unquote(rfid).lower()]]=="admin":
+					authStatus="1"
+				else:
+					authStatus="3"
+			except:
+				authStatus="Errore"
+	else:
+		try:
+			if tipoUtenti[badge[urllib2.unquote(rfid).lower()]]=="admin":
+				authStatus="1"
+			else:
+				authStatus="3"
+		except:
+			authStatus="Errore"
+	return Response(response=authStatus, status=200,mimetype="text/plain")
 @app.route('/auth/<user>/<password>')
 def checkUser(user,password):
 	if ipEnabled==True:
@@ -280,6 +359,19 @@ def gBooksParser(isbnapi, inforeq):
 			neterror=open('nodata.jpg')
 			gapi= Response(response=neterror.read(), status=200,mimetype="image/jpeg")
 	return gapi
+@app.route('/rfid/add/<rfid>/<isbn>')
+def rfidAdd(rfid,isbn):
+	rfidISBN[urllib2.unquote(rfid).lower]=urllib2.unquote(isbn).lower
+	resp=Response(response="Registrato "+isbn, status=200,mimetype="text/plain")
+	return resp
+@app.route('/rfid/isbn/<rfid>')
+def rfidISBN(rfid):
+	try:
+		resp=Response(response=rfidISBN[urllib2.unquote(rfid).lower], status=200,mimetype="text/plain")
+	except:
+		resp=Response(response="Errore", status=200,mimetype="text/plain")
+	return resp
+@app.route('/rfid/auth/')
 @app.route('/isbninfo/titolo/<isbn>')
 def isbnTitolo(isbn):
 	resp=Response(response=ISBNTotit(urllib2.unquote(str(isbn)).upper()).title(), status=200,mimetype="text/plain")
